@@ -1,0 +1,9 @@
+{
+  "created_at": "2026-11-03T10:31:41+00:00",
+  "offsets": {
+    "posts_auto.jsonl": 21016,
+    "evidence_discovery.jsonl": 233801,
+    "product_metadata.jsonl": 0
+  },
+  "note": "first run starts AFTER existing historical records; process old data separately for replay"
+}

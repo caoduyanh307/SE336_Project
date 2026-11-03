@@ -1,0 +1,26 @@
+[
+  {
+    "publisher": "Tạp chí Sức Khỏe Cộng",
+    "url": "https://suckhoecong.vn/thuc-pham-chuc-nang.rss",
+    "role": "evidence_candidate",
+    "authorized_for_collection": true,
+    "permission_basis": "Publisher's RSS page permits personal/nonprofit use; RSS snippets and attribution only",
+    "terms_url": "https://suckhoecong.vn/rssMain.html"
+  },
+  {
+    "publisher": "Tạp chí Sức Khỏe Cộng",
+    "url": "https://suckhoecong.vn/goc-nhin-quan-ly.rss",
+    "role": "evidence_candidate",
+    "authorized_for_collection": true,
+    "permission_basis": "Publisher's RSS page permits personal/nonprofit use; RSS snippets and attribution only",
+    "terms_url": "https://suckhoecong.vn/rssMain.html"
+  },
+  {
+    "publisher": "Tạp chí Sức Khỏe Cộng",
+    "url": "https://suckhoecong.vn/store.rss",
+    "role": "promotion_candidate",
+    "authorized_for_collection": true,
+    "permission_basis": "Publisher's RSS page permits personal/nonprofit use; RSS snippets and attribution only",
+    "terms_url": "https://suckhoecong.vn/rssMain.html"
+  }
+]

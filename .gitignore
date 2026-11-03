@@ -1,0 +1,27 @@
+# Python
+.venv/
+venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+
+# Environment and secrets
+.env
+.env.*
+!.env.example
+*.key
+*.pem
+
+# Generated datasets
+data/raw/
+data/processed/
+data/external/
+data/events/
+data/reports/
+data/logs/
+data/auto_baseline/
+
+# Temporary files
+*.bak
+*.log
+.DS_Store
