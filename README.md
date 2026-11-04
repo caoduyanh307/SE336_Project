@@ -1,86 +1,105 @@
-# SE363 — Bộ thu thập tự động (starter)
+# SE363 — Thu thập Threads và kiểm chứng claim sản phẩm
 
-Không dùng Selenium để vượt CAPTCHA, không lấy cookies phiên đăng nhập và không thu thập các trang Meta không có API được cấp quyền.
+Nguồn chính: **bài Threads tiếng Việt về thực phẩm bổ sung và sản phẩm dinh dưỡng**. Luồng đang xây là thu bài → phân loại nội dung → trích claim → nối sản phẩm/bằng chứng → gán nhãn và đánh giá. Collector, lưu phiên bản, event spool và claim baseline đã có; liên kết evidence và benchmark gold còn đang làm.
 
-## Chạy ngay trên Windows + VS Code
+## Bắt đầu với token vừa tạo
 
-1. Giải nén ZIP, mở thư mục `SE363_Auto_Collector` trong VS Code.
-2. Trong Terminal (PowerShell):
+Dự án dùng **Python 3.10+ và thư viện chuẩn**, không cần cài thêm package. Dùng `.venv/bin/python` hiện có; lần đầu trên máy mới có thể tạo bằng `python3 -m venv .venv`.
 
-```powershell
-py -3 -m venv .venv  # không cần cài thêm thư viện Python
-Copy-Item .env.example .env
-.\.venv\Scripts\python.exe collector.py --sources gdelt,crossref
+1. Mở `.env` trong thư mục dự án, thêm hoặc sửa đúng một dòng `THREADS_ACCESS_TOKEN=...`. Giữ token riêng; không đưa vào chat, Git, ảnh chụp hoặc lệnh shell.
+2. Dùng **một** file `.env.example` để tham khảo các khóa còn lại. Giữ `.env` hiện có; chỉ chép các khóa cần bổ sung.
+3. Kiểm tra cấu hình local:
+
+```bash
+.venv/bin/python -m ingestion.threads_collector audit
 ```
 
-Các nguồn mặc định tạo dữ liệu **chỉ mục bài báo và metadata nghiên cứu**, **KHÔNG PHẢI** bài quảng cáo gốc, không phải bằng chứng đủ để kết luận claim. Chỉ khi API phản hồi mới có dữ liệu trong file CSV/JSONL. Không có mạng, bị chặn hoặc không có kết quả: xem `data/reports/ingestion_report.json`.
+`token_present=true` chỉ xác nhận đã đọc được token. App có quyền “Sẵn sàng thử nghiệm” chưa chứng minh token đã được grant quyền; collector cần `threads_basic` và `threads_keyword_search` thực sự được cấp.
 
-## Lấy quảng cáo Meta thật qua API được cấp quyền
+Nếu Debugger chỉ hiện năm quyền basic/publish/manage replies/insights/read replies, token vẫn thiếu `threads_keyword_search`. Luồng OAuth phải yêu cầu `scope=threads_basic,threads_keyword_search` với đúng Threads app ID và redirect HTTPS đã đăng ký; chỉ đổi giá trị khai báo trong `.env` không làm token có thêm quyền. Xem [mẫu OAuth chính thức của Meta](https://github.com/fbsamples/threads_api/blob/main/src/index.js). Không giả định nút tạo token mặc định sẽ cấp thêm scope.
 
-Meta Ad Library API không cho tải đại trà mọi quảng cáo thực phẩm bảo vệ sức khỏe tại Việt Nam. Nếu bạn sở hữu hoặc được chủ tài khoản quảng cáo ủy quyền cho một ad account, hãy điền vào `.env`:
+Các khóa ghi nhận cấu hình đã xác minh:
 
-```ini
-META_ACCESS_TOKEN=<token-cua-ban>
-META_AD_ACCOUNT_ID=<account-id-cua-ban>
-META_API_VERSION=v25.0
+```dotenv
+THREADS_COLLECTION_PERMISSION_STATUS=verified
+THREADS_VERIFIED_SCOPES=threads_basic,threads_keyword_search
+THREADS_STORAGE_PERMISSION_STATUS=metadata_only
+THREADS_POLICY_REVIEWED_AT=YYYY-MM-DD
+THREADS_REDISTRIBUTION_STATUS=not_permitted
+SE363_ENABLE_THREADS_DAILY=0
 ```
 
-Token phải được cấp quyền phù hợp (thường có `ads_read`) và truy cập được tài khoản. Không đưa token vào Git hoặc ảnh chụp màn hình. Xác minh phiên bản Graph API đang được hỗ trợ.
+Chỉ điền `verified`/ngày review sau khi kiểm quyền và mục đích sử dụng thật. Chọn `metadata_only` để lưu tham chiếu; `full_text` chỉ khi quyền lưu nội dung đã đáp ứng. Claim extraction cần text, nên refs-only chưa tạo được bộ claim. Các cờ local không tự cấp quyền Meta. Giới hạn lưu và cấu hình truy vấn nằm trong `.env.example`.
 
-```powershell
-.\.venv\Scripts\python.exe collector.py --sources meta --claims
+## Thử API rồi chạy daily
+
+Sau khi local audit báo `READY`:
+
+```bash
+# Một truy vấn nhỏ, limit=1, có thể lưu một record/event theo chế độ đã chọn.
+.venv/bin/python -m ingestion.threads_collector audit --verify-live
+.venv/bin/python -m ingestion.threads_collector report
 ```
 
-Chương trình chỉ lấy quảng cáo của ad account được cấp quyền; truy xuất `Ad Creative` để đọc văn bản khi Meta cung cấp; bỏ qua creative không có text. `source_url` trống khi API không trả về đường dẫn công khai, `ad_id` và `source_locator` là định danh truy vết. `record_status=needs_review` để kiểm tra chất lượng, không phải sai/đúng.
+Probe thành công mới xác nhận endpoint hoạt động với token. Sau đó đặt `SE363_ENABLE_THREADS_DAILY=1` trong `.env` và chạy:
 
-## Lấy bài từ RSS của thương hiệu (chỉ khi có quyền sử dụng)
-
-Sửa `sources/approved_brand_feeds.json` từ `[]` thành danh sách **nguồn bạn có quyền thu thập**, ví dụ cấu trúc (URL dưới đây chỉ là placeholder, không phải nguồn đã kiểm chứng):
-
-```json
-[
-  {
-    "advertiser": "Ten thuong hieu duoc cap quyen",
-    "url": "https://example.org/rss.xml",
-    "authorized_for_collection": true
-  }
-]
+```bash
+bash run_daily.sh
+.venv/bin/python daily_se363.py --status
+.venv/bin/python -m ingestion.threads_collector report
 ```
 
-Sau đó:
+`run_daily.sh` dùng venv và khóa tránh chạy chồng. Daily mặc định tập trung Threads, tạo claim candidates khi có text được phép lưu, rồi cập nhật spool/report. RSS chỉ chạy khi thêm `--with-rss`:
 
-```powershell
-.\.venv\Scripts\python.exe collector.py --sources brand --claims
+```bash
+.venv/bin/python daily_se363.py --once --with-rss
 ```
 
-RSS được phân loại `promotional_content_candidate`, **không tự gọi là quảng cáo trả phí**. Chương trình chỉ đọc feed được cấu hình, không tự crawl các trang được liên kết.
+Không tính RSS, Crossref hoặc ViEcomNER thành quảng cáo Threads. Nhãn tự động chỉ là candidate cần người rà. Số liệu thật và giới hạn nghiệm thu xem [trạng thái](docs/STATUS.md); schema, quyền dữ liệu và quy trình gán nhãn xem [dataset](docs/DATASET.md).
 
-## Metadata sản phẩm do đối tác cung cấp hoặc được phép tái sử dụng
+## Cấu trúc duy trì
 
-Điền các dòng thật vào `sources/partner_products.csv`, bao gồm URL tài liệu và mô tả quyền dùng dữ liệu trong cột `usage_permission`.
-
-```powershell
-.\.venv\Scripts\python.exe collector.py --sources partner
+```text
+README.md                         Cách cài, token và chạy
+.env.example                      Một mẫu cấu hình, Threads đứng đầu
+config/threads_keywords.json      Từ khóa và ghi chú sampling
+ingestion/                       Threads collector, phân loại vai trò
+daily_se363.py                   Điều phối, spool và trạng thái
+claim_baseline_se363.py          Trích claim ứng viên từ dữ liệu local
+run_daily.sh                     Entry point daily có lock
+install_daily_cron.sh            Cài lịch khi chủ động yêu cầu
+remove_daily_cron.sh             Gỡ lịch khi chủ động yêu cầu
+collector.py                     API metadata/evidence/nguồn legacy tùy chọn
+expand_se363.py                  Một công cụ RSS bổ trợ và báo cáo số liệu
+sources/                         Nguồn bổ trợ và quyền của từng nguồn
+tests/                           Kiểm thử offline, dùng dữ liệu tổng hợp trong temp
+docs/DATASET.md                   Schema, provenance, annotation
+docs/STATUS.md                    Kết quả thật, blockers và việc còn thiếu
+data/                            Dữ liệu/state/output local, ngoài Git
 ```
 
-Nguồn Cục An toàn thực phẩm và Cổng dịch vụ công Bộ Y tế chưa được xác minh có API công khai ổn định cho các hồ sơ; chương trình không tự giả định có API, không tự cố vượt hạn chế truy cập.
+Dữ liệu Threads nằm ở `data/raw/threads_posts.jsonl` hoặc `threads_post_refs.jsonl`; SQLite ở `data/state/threads_collector.sqlite`; claim tự động ở `data/auto_baseline/threads/`. Event spool và báo cáo lần lượt ở `data/events/`, `data/reports/`. Giữ annotation thủ công tách khỏi output baseline. Các dữ liệu RSS/NER đã có vẫn giữ nguyên để đối chiếu.
 
-## Kết quả
+## Lịch 02:00
 
-- `data/raw/posts_auto.csv` — quảng cáo Meta được cấp quyền và/hoặc *ứng viên* quảng bá từ RSS.
-- `data/raw/claim_candidates_auto.csv` — claim regex **ứng viên**, chưa xác thực.
-- `data/raw/evidence_discovery.csv` — chỉ mục URL bài báo GDELT.
-- `data/raw/research_metadata.csv` — metadata DOI Crossref.
-- `data/raw/product_metadata.csv` — hồ sơ sản phẩm đối tác, có version hash.
-- `data/reports/ingestion_report.json` — số bản ghi nhận được/mới/lỗi.
+Lịch dự kiến dùng giờ hệ thống Asia/Ho_Chi_Minh; máy phải bật lúc chạy. Đợt dọn code không cài hoặc thay đổi cron. Kiểm tra bằng:
 
-Tất cả số lượng được tạo từ response thật hoặc file đối tác thật. Chạy lặp nhiều lần: `_key` giúp tránh trùng. File JSONL là log append-only; việc cập nhật record nên được xử lý ở bước database sau.
+```bash
+crontab -l
+tail -n 50 data/logs/cron.log
+```
 
-## Cần đánh giá thêm trước khi dùng cho đồ án
+Nếu cần cài/gỡ lịch, dùng hai script tương ứng sau khi xác nhận entry hiện tại, tránh cài trùng. Tắt riêng Threads bằng `SE363_ENABLE_THREADS_DAILY=0`, giữ nguyên state và dữ liệu.
 
-- Kiểm tra license/terms, robots với bất kỳ crawler HTML mới nào. Không tự tải toàn văn bài báo từ GDELT.
-- GDELT chỉ tạo bài báo *liên quan*; không được suy ra bài báo chính là quảng cáo, hoặc bằng chứng được xác minh.
-- Crossref chỉ cung cấp metadata nghiên cứu; không xem DOI là xác nhận chất lượng nghiên cứu.
-- Không dùng metadata sản phẩm còn thiếu làm lý do tự động gán `REFUTED`.
-- Baseline regex có thể tách sai claim. Đánh giá thủ công và lưu span chính xác trước khi dùng làm ground truth.
-- Lịch định kỳ sau này: Windows Task Scheduler chạy lệnh một lần/ngày; hoặc Airflow quản lý batch cập nhật. Kafka/Spark dùng để xử lý luồng sự kiện, không gắn vào chỉ để trình diễn.
+## Kiểm thử và các lệnh bổ sung
+
+```bash
+.venv/bin/python -W error::ResourceWarning -m unittest discover -s tests -q
+.venv/bin/python -m ingestion.threads_collector --help
+.venv/bin/python daily_se363.py --help
+.venv/bin/python expand_se363.py report
+```
+
+Collector có backfill, export, suppress và purge; xem `--help` cùng [dataset](docs/DATASET.md) trước khi dùng. Backfill/replay là dữ liệu lịch sử, không được báo như mới cào hôm nay. `--bootstrap-existing` dùng cursor replay riêng. Suppress/purge thay đổi dữ liệu và chỉ chạy theo yêu cầu cụ thể.
+
+Phân trang lưu cửa sổ/cursor đang dở để tiếp tục sau page cap, quota hoặc gián đoạn. Trong khi một cửa sổ còn dở, giữ nguyên fields, page size và search mode/type; thay đổi sẽ báo lỗi rõ ràng. Search vẫn không bảo đảm lấy đủ mọi bài. `401/403` dừng; `429` hoãn theo retry-after; lỗi mạng/5xx retry hữu hạn. Spool local hiện chưa phải Kafka/Spark.

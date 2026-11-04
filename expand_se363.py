@@ -1,8 +1,7 @@
 #!/usr/bin/env python3
-"""SE363: mở rộng dữ liệu có provenance, không giả danh RSS thành quảng cáo.
+"""SE363: optional RSS discovery and local dataset role counts.
 
 Modes:
-  ner: download pinned ViEcomNER research dataset under data/external (not ads)
   rss: collect publicly published RSS titles/summaries from vetted source list (not full articles)
   report: count distinct records by source class
   self-test: local test only; creates no dataset files
@@ -17,7 +16,6 @@ from html import unescape
 from html.parser import HTMLParser
 import json
 from pathlib import Path
-import re
 import sys
 import time
 from datetime import datetime, timezone
@@ -31,10 +29,7 @@ RAW = ROOT / 'data' / 'raw'
 EXTERNAL = ROOT / 'data' / 'external' / 'ViEcomNER'
 REPORTS = ROOT / 'data' / 'reports'
 SOURCE_CONFIG = ROOT / 'sources' / 'rss_sources_se363.json'
-HF_REPO = 'tnhyen/vietnamese-ecommerce-ner'
-HF_REVISION = 'c8ba175c54b08015a40a9b4658504a02a08b7d8b'
-HF_BASE = f'https://huggingface.co/datasets/{HF_REPO}/resolve/{HF_REVISION}'
-USER_AGENT = 'SE363-AcademicDataCollector/1.0 (RSS summary and permitted dataset only; noncommercial research)'
+USER_AGENT = 'SE363-AcademicDataCollector/1.0 (RSS summaries only; noncommercial research)'
 
 
 def now():
@@ -123,6 +118,70 @@ def load_jsonl(path):
                 print(f'[WARN] invalid JSONL {path.name}:{i}', file=sys.stderr)
 
 
+PUBLISHER_RSS_TYPES = {'publisher_store_rss_candidate', 'publisher_rss_evidence_index'}
+
+
+def rss_identity(row):
+    """A publisher RSS item keeps its identity across feed/URL tracking changes."""
+    role = str(row.get('source_role') or '')
+    url = str(row.get('source_url') or row.get('url') or '')
+    return 'rss:' + sha(role + '|' + canonical(url))
+
+
+def rss_content_hash(row):
+    # Publication/observation times and the feed category are not content edits.
+    content = {'title': str(row.get('title') or ''),
+               'summary': str(row.get('raw_text') or row.get('summary') or '')}
+    return sha(json.dumps(content, ensure_ascii=False, sort_keys=True))
+
+
+def rss_version_index(rows):
+    """Infer legacy snapshots without changing their bytes or replaying them.
+
+    A previously seen content hash is not appended again (including A->B->A).
+    Versions therefore describe novel observed snapshots, not a complete edit log.
+    """
+    result = {}
+    for row in rows:
+        if row.get('source_type') not in PUBLISHER_RSS_TYPES:
+            continue
+        identity = rss_identity(row)
+        state = result.setdefault(identity, {'hashes': {}, 'version': 0, 'post_id': None})
+        content_hash = rss_content_hash(row)
+        if content_hash not in state['hashes']:
+            try:
+                version = max(state['version'] + 1, int(row.get('version') or 1))
+            except (TypeError, ValueError):
+                version = state['version'] + 1
+            state['hashes'][content_hash] = version
+            state['version'] = version
+        if row.get('post_id'):
+            state['post_id'] = row['post_id']
+    return result
+
+
+def new_rss_versions(rows, index):
+    """Prepare only novel publisher RSS snapshots for the canonical collector."""
+    result = []
+    for original in rows:
+        identity = rss_identity(original)
+        content_hash = rss_content_hash(original)
+        state = index.setdefault(identity, {'hashes': {}, 'version': 0, 'post_id': None})
+        if content_hash in state['hashes']:
+            continue
+        version = state['version'] + 1
+        row = dict(original, source_record_id=identity, version=version,
+                   content_hash_sha256=content_hash,
+                   _key='rss_snapshot:' + sha(identity + '|' + content_hash))
+        if row.get('source_role') == 'promotional_content_candidate':
+            row['post_id'] = state['post_id'] or 'RSS-' + sha(canonical(str(row.get('source_url') or row.get('url') or '')))[:12]
+            state['post_id'] = row['post_id']
+        state['hashes'][content_hash] = version
+        state['version'] = version
+        result.append(row)
+    return result
+
+
 def export_csv(src):
     rows = list(load_jsonl(src))
     if not rows:
@@ -143,14 +202,10 @@ def collect_rss(limit=50, sleep_seconds=2.5):
     limit = max(1, min(limit, 50))
     RAW.mkdir(parents=True, exist_ok=True)
     REPORTS.mkdir(parents=True, exist_ok=True)
-    seen = {}
+    indexes = {}
     for key, dest in [('promotion_candidate', RAW / 'posts_auto.jsonl'),
                       ('evidence_candidate', RAW / 'evidence_discovery.jsonl')]:
-        seen[key] = set()
-        for obj in load_jsonl(dest):
-            url = obj.get('source_url') or obj.get('url') or ''
-            if url:
-                seen[key].add(canonical(url))
+        indexes[key] = rss_version_index(load_jsonl(dest))
     report = {'run_at': now(), 'mode': 'rss', 'limits': 'RSS summary/title only; noncommercial use; NOT original ad verification; NOT independently confirmed evidence', 'feeds': [], 'errors': []}
     touched = set()
     for idx, feed in enumerate(feeds):
@@ -158,7 +213,7 @@ def collect_rss(limit=50, sleep_seconds=2.5):
             time.sleep(max(0.0, sleep_seconds))
         role = feed.get('role', '')
         url = feed.get('url', '')
-        if not feed.get('authorized_for_collection') or role not in seen or not url.startswith('https://'):
+        if not feed.get('authorized_for_collection') or role not in indexes or not url.startswith('https://'):
             report['feeds'].append({'url': url, 'skipped': True, 'reason': 'rights/role/url not approved'})
             continue
         try:
@@ -168,8 +223,6 @@ def collect_rss(limit=50, sleep_seconds=2.5):
             newrows = []
             for item in items[:limit]:
                 norm_url = canonical(item['url'])
-                if norm_url in seen[role]:
-                    continue
                 observed = now()
                 base = {
                     '_key': 'se363feed:' + sha(role + '|' + norm_url),
@@ -188,7 +241,7 @@ def collect_rss(limit=50, sleep_seconds=2.5):
                 else:
                     base.update({'summary': item['summary'], 'note': 'Reference discovery only; NOT original ad and NOT verified evidence.'})
                 newrows.append(base)
-                seen[role].add(norm_url)
+            newrows = new_rss_versions(newrows, indexes[role])
             with out.open('a', encoding='utf-8') as f:
                 for row in newrows:
                     f.write(json.dumps(row, ensure_ascii=False) + '\n')
@@ -207,79 +260,59 @@ def collect_rss(limit=50, sleep_seconds=2.5):
     return report
 
 
-def download_ner():
-    EXTERNAL.mkdir(parents=True, exist_ok=True)
-    REPORTS.mkdir(parents=True, exist_ok=True)
-    report = {'run_at': now(), 'dataset': HF_REPO, 'revision': HF_REVISION,
-              'license': 'CC-BY-NC-SA-4.0 (repository card; use for noncommercial research and give attribution)',
-              'type': 'annotated product TITLE NER; NOT advertisements or product regulatory metadata',
-              'files': [], 'errors': []}
-    for name in ('train', 'validation', 'test'):
-        filename = f'{name}.jsonl'
-        dst = EXTERNAL / filename
-        if dst.exists() and dst.stat().st_size:
-            print(f'[NER] {filename}: already exists, checking; NOT re-downloading')
-        else:
-            url = f'{HF_BASE}/{filename}'
-            try:
-                data = request_bytes(url, max_bytes=10 * 1024 * 1024)
-                # Do not save a rate-limit page or HTML instead of a dataset.
-                first = next((ln for ln in data.splitlines() if ln.strip()), b'')
-                example = json.loads(first)
-                if not isinstance(example, dict) or 'text' not in example:
-                    raise ValueError(f'{filename} missing expected text field')
-                tmp = dst.with_suffix('.tmp')
-                tmp.write_bytes(data)
-                tmp.replace(dst)
-                print(f'[NER] Downloaded: {filename} ({len(data)} bytes)')
-            except (HTTPError, URLError, OSError, ValueError, json.JSONDecodeError) as exc:
-                err = f'HTTP {exc.code}' if isinstance(exc, HTTPError) else str(exc)
-                print(f'[NER ERROR] {filename}: {err}')
-                report['errors'].append({'file': filename, 'error': err})
-                continue
-        count = 0
-        invalid = 0
-        missing_text = 0
-        with dst.open(encoding='utf-8') as f:
-            for line in f:
-                if not line.strip():
-                    continue
-                try:
-                    rec = json.loads(line)
-                    count += 1
-                    if not rec.get('text'):
-                        missing_text += 1
-                except (ValueError, AttributeError):
-                    invalid += 1
-        report['files'].append({'file': str(dst.relative_to(ROOT)), 'rows': count, 'invalid_lines': invalid,
-                                'missing_text': missing_text, 'sha256': hashlib.sha256(dst.read_bytes()).hexdigest()})
-        print(f'[NER] {filename}: rows={count}, invalid={invalid}, missing text={missing_text}')
-    (EXTERNAL / 'PROVENANCE.json').write_text(json.dumps({
-        'repository': 'https://huggingface.co/datasets/' + HF_REPO, 'revision': HF_REVISION,
-        'license_url': 'https://creativecommons.org/licenses/by-nc-sa/4.0/',
-        'data_role': 'auxiliary_entity_ner_train_eval_not_original_ads',
-        'notes': 'Preserve source train/validation/test split; never combine gold test with train; verify underlying source rights before redistribution.',
-        'downloaded_at': now()}, ensure_ascii=False, indent=2), encoding='utf-8')
-    output = REPORTS / 'ner_import_report.json'
-    output.write_text(json.dumps(report, ensure_ascii=False, indent=2), encoding='utf-8')
-    print(f'NER report: {output.relative_to(ROOT)}')
-    return report
-
-
 def count_report():
+    raw_files = ('posts_auto.jsonl', 'evidence_discovery.jsonl', 'research_metadata.jsonl',
+                 'product_metadata.jsonl', 'threads_posts.jsonl', 'threads_post_refs.jsonl')
+    result = {'run_at': now(), 'counts': {}, 'raw_rows_by_file': {},
+              'by_role': {}, 'by_source_type': {},
+              'warning': 'Roles and source types come from records, not filenames. RSS counts are unique source records; raw_rows include content versions. Candidates are not verified ads or gold labels.'}
+    identities_by_role = {}
+    identities_by_source = {}
+    identities = set()
+    historic = {'promotional_candidates_rss': set(), 'evidence_discovery_rss': set(),
+                'research_metadata_crossref': set()}
+    for name in raw_files:
+        rows = list(load_jsonl(RAW / name))
+        result['raw_rows_by_file'][name] = len(rows)
+        for i, row in enumerate(rows):
+            role = str(row.get('source_role') or 'unknown')
+            source_type = str(row.get('source_type') or row.get('source_platform') or 'unknown')
+            identity = (role, source_type, str(row.get('source_record_id') or row.get('post_id')
+                        or row.get('doi') or row.get('product_id')
+                        or row.get('source_url') or row.get('url') or row.get('_key') or f'{name}:{i}'))
+            # Old publisher rows have no source_record_id; apply the same canonical
+            # identity used for new snapshots without modifying the source file.
+            if source_type in PUBLISHER_RSS_TYPES:
+                identity = (role, source_type, rss_identity(row))
+            identities.add(identity)
+            for key, bucket, known in ((role, result['by_role'], identities_by_role),
+                                       (source_type, result['by_source_type'], identities_by_source)):
+                bucket.setdefault(key, {'raw_rows': 0, 'unique_records': 0})['raw_rows'] += 1
+                known.setdefault(key, set()).add(identity)
+            if role == 'promotional_content_candidate' and source_type in {'publisher_store_rss_candidate', 'approved_brand_rss'}:
+                historic['promotional_candidates_rss'].add(identity)
+            elif role == 'evidence_candidate' and source_type == 'publisher_rss_evidence_index':
+                historic['evidence_discovery_rss'].add(identity)
+            elif role == 'research_metadata' and source_type == 'crossref':
+                historic['research_metadata_crossref'].add(identity)
+    for key, values in historic.items():
+        result['counts'][key] = len(values)
+    for bucket, known in ((result['by_role'], identities_by_role),
+                          (result['by_source_type'], identities_by_source)):
+        for key, values in known.items():
+            bucket[key]['unique_records'] = len(values)
+    result['totals'] = {'raw_rows': sum(result['raw_rows_by_file'].values()),
+                        'unique_records': len(identities)}
     lookup = {
-        'promotional_candidates_rss': RAW / 'posts_auto.jsonl',
-        'evidence_discovery_rss': RAW / 'evidence_discovery.jsonl',
-        'research_metadata_crossref': RAW / 'research_metadata.jsonl',
         'ner_train_external': EXTERNAL / 'train.jsonl',
         'ner_validation_external': EXTERNAL / 'validation.jsonl',
         'ner_test_external': EXTERNAL / 'test.jsonl',
     }
-    result = {'run_at': now(), 'counts': {}, 'warning': 'These are DIFFERENT data roles. Do not add them up as original ads; only validated source ads count toward the ad dataset.'}
     for typ, path in lookup.items():
         rows = list(load_jsonl(path))
         result['counts'][typ] = len(rows)
-        print(f'{typ:29s}: {len(rows)}')
+    for typ, count in result['counts'].items():
+        print(f'{typ:29s}: {count}')
     REPORTS.mkdir(parents=True, exist_ok=True)
     out = REPORTS / 'dataset_roles_report.json'
     out.write_text(json.dumps(result, ensure_ascii=False, indent=2), encoding='utf-8')
@@ -299,17 +332,15 @@ def selftest():
 
 def main():
     p = argparse.ArgumentParser()
-    p.add_argument('command', choices=['self-test', 'rss', 'ner', 'report', 'all'])
+    p.add_argument('command', choices=['self-test', 'rss', 'report'])
     p.add_argument('--max-per-feed', type=int, default=50)
     p.add_argument('--sleep-seconds', type=float, default=2.5)
     args = p.parse_args()
     if args.command == 'self-test':
         selftest()
-    if args.command in ('ner', 'all'):
-        download_ner()
-    if args.command in ('rss', 'all'):
+    if args.command == 'rss':
         collect_rss(limit=args.max_per_feed, sleep_seconds=args.sleep_seconds)
-    if args.command in ('report', 'all'):
+    if args.command == 'report':
         count_report()
 
 

@@ -1,16 +1,103 @@
 [
-  {"publisher":"Sức Khỏe Cộng - Thực phẩm chức năng","url":"https://suckhoecong.vn/thuc-pham-chuc-nang.rss","role":"evidence_candidate","terms_url":"https://suckhoecong.vn/rssMain.html","authorized_for_collection":true},
-  {"publisher":"Sức Khỏe Cộng - Góc nhìn quản lý","url":"https://suckhoecong.vn/goc-nhin-quan-ly.rss","role":"evidence_candidate","terms_url":"https://suckhoecong.vn/rssMain.html","authorized_for_collection":true},
-  {"publisher":"Sức Khỏe Cộng - Store","url":"https://suckhoecong.vn/store.rss","role":"promotion_candidate","terms_url":"https://suckhoecong.vn/rssMain.html","authorized_for_collection":true},
-  {"publisher":"Sức Khỏe Cộng - Đèn đỏ","url":"https://suckhoecong.vn/den-do.rss","role":"evidence_candidate","terms_url":"https://suckhoecong.vn/rssMain.html","authorized_for_collection":true},
-  {"publisher":"Sức Khỏe Cộng - Đèn xanh","url":"https://suckhoecong.vn/den-xanh.rss","role":"evidence_candidate","terms_url":"https://suckhoecong.vn/rssMain.html","authorized_for_collection":true},
-  {"publisher":"Sức Khỏe Cộng - Cộng đồng lên tiếng","url":"https://suckhoecong.vn/cong-dong-len-tieng.rss","role":"evidence_candidate","terms_url":"https://suckhoecong.vn/rssMain.html","authorized_for_collection":true},
-  {"publisher":"Sức Khỏe Cộng - Hỏi đáp","url":"https://suckhoecong.vn/hoi-dap.rss","role":"evidence_candidate","terms_url":"https://suckhoecong.vn/rssMain.html","authorized_for_collection":true},
-  {"publisher":"Sức Khỏe Cộng - Điểm tin","url":"https://suckhoecong.vn/tin-tuc-thoi-su.rss","role":"evidence_candidate","terms_url":"https://suckhoecong.vn/rssMain.html","authorized_for_collection":true},
-  {"publisher":"Sức Khỏe Cộng - Kiến thức sống khỏe","url":"https://suckhoecong.vn/kien-thuc-song-khoe.rss","role":"evidence_candidate","terms_url":"https://suckhoecong.vn/rssMain.html","authorized_for_collection":true},
-  {"publisher":"Sức Khỏe Cộng - Phòng bệnh chủ động","url":"https://suckhoecong.vn/phong-benh-chu-dong.rss","role":"evidence_candidate","terms_url":"https://suckhoecong.vn/rssMain.html","authorized_for_collection":true},
-  {"publisher":"Sức Khỏe Cộng - Nâng niu sức sống tự nhiên","url":"https://suckhoecong.vn/nang-niu-suc-song-tu-nhien.rss","role":"evidence_candidate","terms_url":"https://suckhoecong.vn/rssMain.html","authorized_for_collection":true},
-  {"publisher":"Sức Khỏe Cộng - Chia sẻ","url":"https://suckhoecong.vn/toi-chia-se.rss","role":"evidence_candidate","terms_url":"https://suckhoecong.vn/rssMain.html","authorized_for_collection":true},
-  {"publisher":"Sức Khỏe Cộng - Trang chủ","url":"https://suckhoecong.vn/trang-chu.rss","role":"evidence_candidate","terms_url":"https://suckhoecong.vn/rssMain.html","authorized_for_collection":true},
-  {"publisher":"Sức Khỏe Cộng - Trò chuyện","url":"https://suckhoecong.vn/tro-chuyen.rss","role":"evidence_candidate","terms_url":"https://suckhoecong.vn/rssMain.html","authorized_for_collection":true}
+  {
+    "publisher": "Sức Khỏe Cộng - Thực phẩm chức năng",
+    "url": "https://suckhoecong.vn/thuc-pham-chuc-nang.rss",
+    "role": "evidence_candidate",
+    "terms_url": "https://suckhoecong.vn/rssMain.html",
+    "authorized_for_collection": true,
+    "permission_basis": "Publisher's RSS page permits personal/nonprofit use; RSS snippets and attribution only"
+  },
+  {
+    "publisher": "Sức Khỏe Cộng - Góc nhìn quản lý",
+    "url": "https://suckhoecong.vn/goc-nhin-quan-ly.rss",
+    "role": "evidence_candidate",
+    "terms_url": "https://suckhoecong.vn/rssMain.html",
+    "authorized_for_collection": true,
+    "permission_basis": "Publisher's RSS page permits personal/nonprofit use; RSS snippets and attribution only"
+  },
+  {
+    "publisher": "Sức Khỏe Cộng - Store",
+    "url": "https://suckhoecong.vn/store.rss",
+    "role": "promotion_candidate",
+    "terms_url": "https://suckhoecong.vn/rssMain.html",
+    "authorized_for_collection": true,
+    "permission_basis": "Publisher's RSS page permits personal/nonprofit use; RSS snippets and attribution only"
+  },
+  {
+    "publisher": "Sức Khỏe Cộng - Đèn đỏ",
+    "url": "https://suckhoecong.vn/den-do.rss",
+    "role": "evidence_candidate",
+    "terms_url": "https://suckhoecong.vn/rssMain.html",
+    "authorized_for_collection": true
+  },
+  {
+    "publisher": "Sức Khỏe Cộng - Đèn xanh",
+    "url": "https://suckhoecong.vn/den-xanh.rss",
+    "role": "evidence_candidate",
+    "terms_url": "https://suckhoecong.vn/rssMain.html",
+    "authorized_for_collection": true
+  },
+  {
+    "publisher": "Sức Khỏe Cộng - Cộng đồng lên tiếng",
+    "url": "https://suckhoecong.vn/cong-dong-len-tieng.rss",
+    "role": "evidence_candidate",
+    "terms_url": "https://suckhoecong.vn/rssMain.html",
+    "authorized_for_collection": true
+  },
+  {
+    "publisher": "Sức Khỏe Cộng - Hỏi đáp",
+    "url": "https://suckhoecong.vn/hoi-dap.rss",
+    "role": "evidence_candidate",
+    "terms_url": "https://suckhoecong.vn/rssMain.html",
+    "authorized_for_collection": true
+  },
+  {
+    "publisher": "Sức Khỏe Cộng - Điểm tin",
+    "url": "https://suckhoecong.vn/tin-tuc-thoi-su.rss",
+    "role": "evidence_candidate",
+    "terms_url": "https://suckhoecong.vn/rssMain.html",
+    "authorized_for_collection": true
+  },
+  {
+    "publisher": "Sức Khỏe Cộng - Kiến thức sống khỏe",
+    "url": "https://suckhoecong.vn/kien-thuc-song-khoe.rss",
+    "role": "evidence_candidate",
+    "terms_url": "https://suckhoecong.vn/rssMain.html",
+    "authorized_for_collection": true
+  },
+  {
+    "publisher": "Sức Khỏe Cộng - Phòng bệnh chủ động",
+    "url": "https://suckhoecong.vn/phong-benh-chu-dong.rss",
+    "role": "evidence_candidate",
+    "terms_url": "https://suckhoecong.vn/rssMain.html",
+    "authorized_for_collection": true
+  },
+  {
+    "publisher": "Sức Khỏe Cộng - Nâng niu sức sống tự nhiên",
+    "url": "https://suckhoecong.vn/nang-niu-suc-song-tu-nhien.rss",
+    "role": "evidence_candidate",
+    "terms_url": "https://suckhoecong.vn/rssMain.html",
+    "authorized_for_collection": true
+  },
+  {
+    "publisher": "Sức Khỏe Cộng - Chia sẻ",
+    "url": "https://suckhoecong.vn/toi-chia-se.rss",
+    "role": "evidence_candidate",
+    "terms_url": "https://suckhoecong.vn/rssMain.html",
+    "authorized_for_collection": true
+  },
+  {
+    "publisher": "Sức Khỏe Cộng - Trang chủ",
+    "url": "https://suckhoecong.vn/trang-chu.rss",
+    "role": "evidence_candidate",
+    "terms_url": "https://suckhoecong.vn/rssMain.html",
+    "authorized_for_collection": true
+  },
+  {
+    "publisher": "Sức Khỏe Cộng - Trò chuyện",
+    "url": "https://suckhoecong.vn/tro-chuyen.rss",
+    "role": "evidence_candidate",
+    "terms_url": "https://suckhoecong.vn/rssMain.html",
+    "authorized_for_collection": true
+  }
 ]

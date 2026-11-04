@@ -3,7 +3,9 @@
   "offsets": {
     "posts_auto.jsonl": 21016,
     "evidence_discovery.jsonl": 233801,
-    "product_metadata.jsonl": 0
+    "product_metadata.jsonl": 0,
+    "threads_posts.jsonl": 0,
+    "threads_post_refs.jsonl": 0
   },
   "note": "first run starts AFTER existing historical records; process old data separately for replay"
 }

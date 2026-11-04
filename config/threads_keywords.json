@@ -1,0 +1,35 @@
+{
+  "schema_version": 1,
+  "language": "vi",
+  "purpose": "Vietnamese supplement and nutrition promotional claim discovery for SE363 research",
+  "notice": "keyword hit != advertisement != fraud; seed-biased sample, coverage_unknown",
+  "keywords": [
+    "thực phẩm chức năng",
+    "thực phẩm bảo vệ sức khỏe",
+    "viên uống giảm cân",
+    "collagen",
+    "vitamin C",
+    "sữa tăng chiều cao",
+    "detox",
+    "thanh lọc cơ thể",
+    "hỗ trợ xương khớp",
+    "hỗ trợ tiểu đường",
+    "tăng đề kháng",
+    "viên uống trắng da"
+  ],
+  "classification_only_noise_terms": [
+    "tuyển dụng",
+    "tuyển nhân viên",
+    "bài tập hóa học",
+    "đề thi",
+    "hỏi bài"
+  ],
+  "classification_only_exclusions": [
+    "Personal medical histories, diagnostic inference, and sensitive individual profiling are outside scope"
+  ],
+  "sampling_bias": [
+    "Seed phrases emphasize supplements and nutrition and omit other products",
+    "Vietnamese queries can match mixed-language posts and do not establish author location",
+    "RECENT ranking, page caps, API visibility, edits, deletion, and permission limits affect recall"
+  ]
+}

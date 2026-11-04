@@ -11,6 +11,8 @@ __pycache__/
 !.env.example
 *.key
 *.pem
+*token*.json
+credentials*.json
 
 # Generated datasets
 data/raw/
@@ -20,6 +22,16 @@ data/events/
 data/reports/
 data/logs/
 data/auto_baseline/
+data/state/
+data/exports/
+*.sqlite
+*.sqlite3
+*.sqlite-*
+*.sqlite3-*
+*.db
+*.db-*
+.cache/
+*.lock
 
 # Temporary files
 *.bak
